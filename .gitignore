@@ -1,0 +1,9 @@
+# ignore all files in the data directory
+data/
+
+# ignore secrets files
+secrets*
+
+# compiled files
+__pycache__
+.DS_Store
