@@ -1,8 +1,10 @@
+import sys
 import torch
 from typing import List
 from torch import nn
 from torch.nn import functional as F
 
+sys.path.append('.')
 from shared.mos_cnn import MOSCNN
 
 
@@ -50,7 +52,7 @@ class MOSNet(nn.Module):
         '''
             expects audio to be in shape [bz, ts, mels]
             sample_lengths is a list of the original lengths of each sample in the batch, to prevent the network from running on empty frames
-            returns a list of scalar utterance-level predictions and a list of frame-level predictions of shape [n_frames]
+            returns a tensor of scalar utterance-level predictions and a list of frame-level predictions of shape [n_frames]
         '''
         frame_predictions = [[] for _ in range(audio.shape[0])]
         utterance_predictions = []
@@ -69,9 +71,9 @@ class MOSNet(nn.Module):
             frame_predictions[sample_ind] = torch.stack(frame_predictions[sample_ind]).view(-1)
             utterance_predictions.append(torch.mean(frame_predictions[sample_ind]))
             
-        return utterance_predictions, frame_predictions
+        return torch.stack(utterance_predictions), frame_predictions
 
-    def _frame_mos(self, frame):
+    def _frame_mos(self, frame: torch.Tensor):
         '''
             runs network on single frame in audio, expects frame to be in shape [1, frame_size, mels] 
             "1" in this case is the channels dimension

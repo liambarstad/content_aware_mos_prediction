@@ -1,0 +1,21 @@
+meta:
+  device: 'cpu'
+
+mel:
+  n_fft: 512
+  hop_length: 256
+  n_mels: 80
+
+train:
+  epochs: 100
+  batch_size: 16
+  learning_rate: 0.0001
+  validate_every_n_epochs: 10
+
+model:
+  n_frames: 25
+  cnn_channels: [16, 32, 64, 128]
+  cnn_kernel_size: 3
+  blstm_hidden_size: 128
+  fc_hidden_size: 128
+  fc_dropout: 0.3
