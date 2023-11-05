@@ -81,12 +81,12 @@ class MOSNetMetrics:
 
     def print(self, epoch_num: int = None):
         print(f'{datetime.now()} :: {self.name.upper()}'+(f' :: EPOCH {epoch_num}' if epoch_num else ''))
-        print('UTTERANCE LCC: ', self.utterance_lcc.calculate())
-        print('UTTERANCE SRCC: ', self.utterance_srcc.calculate())
-        print('UTTERANCE MSE: ', self.utterance_mse.calculate())
-        print('FRAME LCC: ', self.frame_lcc.calculate())
-        print('FRAME SRCC: ', self.frame_srcc.calculate())
-        print('FRAME MSE: ', self.frame_mse.calculate())
+        print('    UTTERANCE LCC: ', self.utterance_lcc.calculate())
+        print('    UTTERANCE SRCC: ', self.utterance_srcc.calculate())
+        print('    UTTERANCE MSE: ', self.utterance_mse.calculate())
+        print('    FRAME LCC: ', self.frame_lcc.calculate())
+        print('    FRAME SRCC: ', self.frame_srcc.calculate())
+        print('    FRAME MSE: ', self.frame_mse.calculate())
 
     def save(self):
         '''

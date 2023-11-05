@@ -13,6 +13,7 @@ from utils.metrics import MOSNetMetrics
 from utils.utils import pad_audio_batch
 
 DEFAULT_DATASET_PARAMS = {
+    'system_ids': [15],
     'sample_rate': 16000,
     'locales': ['us'],
     'reliability_percentile': 0.80
@@ -83,7 +84,6 @@ def train(config_path: str, validate_loop: bool = True, seed_value: int = 123):
     for epoch in range(params.train['epochs']):
         train_metrics = MOSNetMetrics('mosnet_train') 
 
-        print(f'{datetime.now()} :: EPOCH {epoch+1}')
         mosnet.train()
         for i, (audio, sample_lengths, mos_scores, metadata) in enumerate(train_loader):
             optimizer.zero_grad()
@@ -100,12 +100,14 @@ def train(config_path: str, validate_loop: bool = True, seed_value: int = 123):
         train_metrics.save() 
 
         # validation loop every n epochs
-        if epoch % params.train['validate_every_n_epochs']:
+        if epoch == 0 or epoch+1 % params.train['validate_every_n_epochs'] == 0:
             # print metrics every n epochs regardless
             train_metrics.print(epoch+1)
 
             if validate_loop:
                 validate(config_path, mosnet, epoch+1)
+        else:
+            print(f'{datetime.now()} :: EPOCH {epoch+1}')
 
     return mosnet
 

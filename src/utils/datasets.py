@@ -10,6 +10,7 @@ class SOMOSDataset(Dataset):
     def __init__(self, 
                  mel_params: Dict[str, int],
                  sample_rate: int = 22050, 
+                 system_ids: Optional[List[str]] = None,
                  locales: Optional[List[str]] = None,
                  split: Optional[str] = None,
                  reliability_percentile: float = None,
@@ -29,6 +30,10 @@ class SOMOSDataset(Dataset):
         self.audio_dir = os.environ['SOMOS_AUDIO_DIR']
         
         self.scores = pd.read_csv(self.scores_dir, delimiter=r'\s+', engine='python')
+
+        # select only scores from particular systems if they are included in the system_ids argument (for testing)
+        if system_ids:
+            self.scores = self.scores[self.scores.systemId.isin(system_ids)]
 
         # select only particular locales if they are included in the locales argument
         if locales:
