@@ -22,15 +22,18 @@ class MOSCNN(nn.Module):
                     in_channels=(1 if ind == 0 else cnn_channels[ind-1]),
                     out_channels=channels
                 ),
+                nn.LeakyReLU(negative_slope=0.1),
                 self.conv_layer(
                     in_channels=channels,
                     out_channels=channels
                 ),
+                nn.LeakyReLU(negative_slope=0.1),
                 self.conv_layer(
                     in_channels=channels,
                     out_channels=channels,
                     stride=(1, 3)
-                )
+                ),
+                nn.LeakyReLU(negative_slope=0.1),
             )
             for ind, channels in enumerate(cnn_channels)
         ])
@@ -40,7 +43,7 @@ class MOSCNN(nn.Module):
         conv_layer = nn.Conv2d(
              in_channels=in_channels,
              out_channels=out_channels,
-             kernel_size=self.cnn_kernel_size,
+             kernel_size=(self.cnn_kernel_size, self.cnn_kernel_size),
              stride=stride,
              padding=conv_same_padding(self.cnn_kernel_size)
         )
@@ -51,5 +54,5 @@ class MOSCNN(nn.Module):
         #accepts a tensor [bz, frame_size, mel], assuming one channel
         x = x.unsqueeze(1)
         for layer in self.layers:
-            x = F.relu(layer(x))
+            x = layer(x)
         return x

@@ -1,6 +1,7 @@
 import os
 import librosa
 import torch
+import scipy
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional
@@ -8,14 +9,14 @@ from torch.utils.data import Dataset
 
 class SOMOSDataset(Dataset):
     def __init__(self, 
-                 mel_params: Dict[str, int],
+                 stft_params: Dict[str, int],
                  sample_rate: int = 22050, 
                  system_ids: Optional[List[str]] = None,
                  locales: Optional[List[str]] = None,
                  split: Optional[str] = None,
                  reliability_percentile: float = None,
                 ):
-        self.mel_params = mel_params
+        self.stft_params = stft_params
         self.sample_rate = sample_rate
 
         self.scores_dir = \
@@ -56,12 +57,12 @@ class SOMOSDataset(Dataset):
 
     def _prepare_audio(self, audio, orig_sr):
         audio = self._downsample(audio, orig_sr)
-        # convert to mel spectrogram
-        return np.transpose(librosa.feature.melspectrogram(
+        # convert to stft, take absolute value to remove complex numbers
+        return np.transpose(np.abs(librosa.stft(
             y=audio, 
-            sr=self.sample_rate,
-            **self.mel_params
-        ))
+            **self.stft_params,
+            window=scipy.signal.windows.hamming
+        )))
 
     def _downsample(self, audio, orig_sr):
         # downsample if sample rate specified in self.sample_rate

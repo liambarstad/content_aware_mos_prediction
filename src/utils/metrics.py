@@ -1,4 +1,5 @@
 import os
+import csv
 import torch
 from typing import List
 from datetime import datetime
@@ -54,8 +55,12 @@ class MSE(Metric):
 
 
 class MOSNetMetrics:
-    def __init__(self, name: str):
+    def __init__(self, name: str, run_key: str):
+        '''
+            calculates all mosnet metrics, accepts a "name" to differentiate between models and train/val/test, and a run_key to differentiate between runs
+        '''
         self.name = name
+        self.run_key = run_key
         self.utterance_lcc, self.frame_lcc = [LCC(), LCC()]
         self.utterance_srcc, self.frame_srcc = [SRCC(), SRCC()]
         self.utterance_mse, self.frame_mse = [MSE(), MSE()]
@@ -88,9 +93,35 @@ class MOSNetMetrics:
         print('    FRAME SRCC: ', self.frame_srcc.calculate())
         print('    FRAME MSE: ', self.frame_mse.calculate())
 
-    def save(self):
+    def save(self, epoch_num: int = None):
         '''
-            appends metrics to a file, named by the title, in the runs directory specified in the environment variable
+            appends metrics to a file, named by the title and run_key, in the runs directory specified in the environment variable
             clears all metrics after saving
         '''
-        pass
+        run_fpath = os.path.join(RUNS_DIR, self.name)+f'_{self.run_key}.csv'
+        f_exists = os.path.isfile(run_fpath)
+
+        with open(run_fpath, 'a', newline='') as metrics_file:
+            csvwriter = csv.writer(metrics_file)
+            if not f_exists:
+                csvwriter.writerow([
+                    'epoch', 
+                    'utterance_lcc', 
+                    'utterance_srcc', 
+                    'utterance_mse', 
+                    'frame_lcc', 
+                    'frame_srcc', 
+                    'frame_mse'
+                ])
+            csvwriter.writerow([
+                epoch_num,
+                self.utterance_lcc.calculate(),
+                self.utterance_srcc.calculate(),
+                self.utterance_mse.calculate(),
+                self.frame_lcc.calculate(),
+                self.frame_srcc.calculate(),
+                self.frame_mse.calculate()
+            ])
+            
+        for metric in [self.utterance_lcc, self.utterance_srcc, self.utterance_mse, self.frame_lcc, self.frame_srcc, self.frame_mse]:
+            metric.clear()

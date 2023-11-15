@@ -12,14 +12,13 @@ class TestMOSNet:
 
     def setup_method(self):
         self.default_args = {
-            'n_frames': 25,
             'cnn_channels': [16, 32, 64, 128],
             'cnn_kernel_size': 3,
             'blstm_hidden_size': 128,
-            'fc_hidden_size': 128
+            'fc_hidden_size': 128,
+            'fc_dropout': 0.3
         }
-        self.dataset = SOMOSDataset(mel_params={
-            'n_mels': 80,
+        self.dataset = SOMOSDataset(stft_params={
             'hop_length': 256,
             'n_fft': 512
         }, sample_rate=16000, split='test')
@@ -29,14 +28,13 @@ class TestMOSNet:
         audio, sample_lengths, mos_score, _ = next(iter(self.dataloader))
         mosnet = MOSNet(**self.default_args)
         utterance_mos, frame_mos = mosnet(audio, sample_lengths) 
-        assert type(utterance_mos) == list
+        assert type(utterance_mos) == torch.Tensor
         assert type(frame_mos) == list
-        assert type(utterance_mos[0]) == torch.Tensor
         assert type(frame_mos[0]) == torch.Tensor
         # no outputs are above 5 or below 1
         assert (torch.sum(frame_mos[0] > 5) == 0).item()
-        assert (torch.sum(utterance_mos[0] > 5) == 0).item()
+        assert (torch.sum(utterance_mos > 5) == 0).item()
         assert (torch.sum(frame_mos[0] < 1) == 0).item()
-        assert (torch.sum(utterance_mos[0] < 1) == 0).item()
+        assert (torch.sum(utterance_mos < 1) == 0).item()
 
     

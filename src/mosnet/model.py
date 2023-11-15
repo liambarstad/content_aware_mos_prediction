@@ -4,13 +4,12 @@ from typing import List
 from torch import nn
 from torch.nn import functional as F
 
-sys.path.append('.')
+sys.path.append('src')
 from shared.mos_cnn import MOSCNN
 
 
 class MOSNet(nn.Module):
     def __init__(self,
-                 n_frames: int,
                  cnn_channels: List[int],
                  cnn_kernel_size: int,
                  blstm_hidden_size: int,
@@ -21,27 +20,23 @@ class MOSNet(nn.Module):
 
         super(MOSNet, self).__init__()
 
-        self.n_frames = n_frames
         self.fc_dropout = fc_dropout
         self.mos_score_range = mos_score_range
 
         self.cnn = MOSCNN(cnn_channels, cnn_kernel_size)
 
         self.blstm = nn.LSTM(
-            input_size=cnn_channels[-1],
+            input_size=cnn_channels[-1]*4,
             hidden_size=blstm_hidden_size,
             batch_first=True,
             bidirectional=True,
+            dropout=0.3
         )
-
-        self.fc1_input_dim = 2*blstm_hidden_size*n_frames
 
         self.fc1 = nn.Linear(
-            in_features=self.fc1_input_dim,
+            in_features=2*blstm_hidden_size,
             out_features=fc_hidden_size
         )
-
-        self.dropout = nn.Dropout(p=0.3)
 
         self.frame_score = nn.Linear(
             in_features=fc_hidden_size,
@@ -50,13 +45,31 @@ class MOSNet(nn.Module):
 
     def forward(self, audio: torch.Tensor, sample_lengths: List[int]):
         '''
-            expects audio to be in shape [bz, ts, mels]
+            expects audio to be in shape [bz, ts, sample_points]
             sample_lengths is a list of the original lengths of each sample in the batch, to prevent the network from running on empty frames
-            returns a tensor of scalar utterance-level predictions and a list of frame-level predictions of shape [n_frames]
+            returns 2 items, a tensor of scalar utterance-level predictions, and a list of frame-level predictions of shape [n_frames]
         '''
-        frame_predictions = [[] for _ in range(audio.shape[0])]
-        utterance_predictions = []
+        cnn_output = self.cnn(audio) 
+        # transpose the cnn output so that the channels are now the features, and flatten the height dimension
+        blstm_input = torch.transpose(cnn_output, 1, 2).flatten(2, 3)
+        # run through blstm
+        blstm_output, _ = self.blstm(blstm_input)
+        # pass through fully connected layer w/ relu + dropout
+        fc1_output = F.leaky_relu(self.fc1(blstm_output), negative_slope=0.1)
+        #fc1_output = F.relu(F.dropout(self.fc1(blstm_output), p=self.fc_dropout, training=self.training))
+        # activation layer and constrain to be in range
+        frame_mos = torch.sigmoid(self.frame_score(fc1_output))\
+            * (self.mos_score_range[1] - self.mos_score_range[0]) + self.mos_score_range[0]
+        # remove padding by using sample_lengths
+        frame_predictions = [ sample[:sample_lengths[ind]].squeeze(1) for ind, sample in enumerate(frame_mos) ] 
+        # average the frame predictions to get the utterance prediction
+        utterance_predictions = torch.stack([ torch.mean(sample) for sample in frame_predictions ])
+        print('FUUUUUUUCK', utterance_predictions)
 
+        return utterance_predictions, frame_predictions
+
+    '''
+    def fuckyou():
         for sample_ind in range(audio.shape[0]):
             # for each sample in the batch, split into frames
             sample = audio[sample_ind, :sample_lengths[sample_ind], :]\
@@ -74,14 +87,12 @@ class MOSNet(nn.Module):
         return torch.stack(utterance_predictions), frame_predictions
 
     def _frame_mos(self, frame: torch.Tensor):
-        '''
-            runs network on single frame in audio, expects frame to be in shape [1, frame_size, mels] 
-            "1" in this case is the channels dimension
-            returns a single mos score for the frame
-        '''
         cnn_output = self.cnn(frame) 
         # transpose the cnn output so that the channels are now the features
-        blstm_input = torch.transpose(cnn_output.squeeze(-1), 1, 2)
+        blstm_input = torch.transpose(cnn_output, 1, 2)
+        # flatten channels dimension
+        blstm_input = blstm_input.reshape(1, -1, blstm_input.shape[2]*blstm_input.shape[3])
+        # run through blstm
         blstm_output, _ = self.blstm(blstm_input)
         # flatten the blstm output
         blstm_output_flattened = blstm_output.view(1, -1)
@@ -93,5 +104,4 @@ class MOSNet(nn.Module):
         fc1_output = F.relu(F.dropout(fc1_output, p=self.fc_dropout, training=self.training))
 
         frame_mos = self.frame_score(fc1_output)
-        # constrain mos to be in range
-        return torch.sigmoid(frame_mos) * (self.mos_score_range[1] - self.mos_score_range[0]) + self.mos_score_range[0]
+        '''

@@ -1,7 +1,6 @@
 from typing import List
 import torch
-from torch import nn
-
+import torch.nn.functional as F
 
 def mosnet_loss(
         utterance_scores: torch.Tensor, 
@@ -13,17 +12,18 @@ def mosnet_loss(
         loss function for mosnet models
         adds the utterance/target MSE to the MSE per frame for each utterance (weighted by the weighting_factor)
     '''
-
     mos_scores = mos_scores.float()
-    mse_loss = nn.MSELoss()
-
-    utterance_loss = mse_loss(utterance_scores, mos_scores)
-
-    frame_losses = [
-        mse_loss(sc, mos_scores[i].expand_as(sc))
-        for i, sc in enumerate(frame_scores)
+    # expand targets to match frame_predictions shape
+    expanded_mos = [
+        mos_score.expand(len(frame)) 
+        for mos_score, frame in zip(mos_scores, frame_scores)
     ]
 
-    frame_loss = torch.mean(torch.stack(frame_losses))
+    # calculate frame-level loss
+    frame_loss = F.mse_loss(torch.cat(frame_scores), torch.cat(expanded_mos))
 
+    # calculate utterance-level loss
+    utterance_loss = F.mse_loss(utterance_scores, mos_scores)
+
+    # can adjust the weights here depending on how much importance you want to give to each loss
     return utterance_loss + (weighting_factor * frame_loss)

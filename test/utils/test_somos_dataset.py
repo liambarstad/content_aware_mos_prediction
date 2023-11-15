@@ -11,10 +11,9 @@ class TestSOMOSDataset:
     def setup_method(self):
         self.default_args = {
             'sample_rate': 16000,
-            'mel_params': {
+            'stft_params': {
                 'n_fft': 512,
-                'hop_length': 256,
-                'n_mels': 80
+                'hop_length': 256
             }
         }
 
@@ -23,7 +22,7 @@ class TestSOMOSDataset:
         assert len(all_data) == 374955
         audio, mos_score, info = all_data[0]
         assert type(audio) == torch.Tensor
-        assert audio.shape[1] == self.default_args['mel_params']['n_mels']
+        assert audio.shape[1] == self.default_args['stft_params']['hop_length'] + 1
         assert type(mos_score) == torch.Tensor
         assert mos_score <= 5 and mos_score >= 0
 
@@ -32,7 +31,7 @@ class TestSOMOSDataset:
         assert len(train_data) == 251635
         audio, mos_score, info = train_data[0]
         assert type(audio) == torch.Tensor
-        assert audio.shape[1] == self.default_args['mel_params']['n_mels']
+        assert audio.shape[1] == self.default_args['stft_params']['hop_length'] + 1
         assert type(mos_score) == torch.Tensor
         assert mos_score <= 5 and mos_score >= 0
 
@@ -41,7 +40,7 @@ class TestSOMOSDataset:
         assert len(validation_data) == 53569
         audio, mos_score, info = validation_data[0]
         assert type(audio) == torch.Tensor
-        assert audio.shape[1] == self.default_args['mel_params']['n_mels']
+        assert audio.shape[1] == self.default_args['stft_params']['hop_length'] + 1
         assert type(mos_score) == torch.Tensor
         assert mos_score <= 5 and mos_score >= 0
 
@@ -50,7 +49,7 @@ class TestSOMOSDataset:
         assert len(test_data) == 53896
         audio, mos_score, info = test_data[0]
         assert type(audio) == torch.Tensor
-        assert audio.shape[1] == self.default_args['mel_params']['n_mels']
+        assert audio.shape[1] == self.default_args['stft_params']['hop_length'] + 1
         assert type(mos_score) == torch.Tensor
         assert mos_score <= 5 and mos_score >= 0
 
