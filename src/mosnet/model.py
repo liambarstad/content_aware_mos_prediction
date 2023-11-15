@@ -69,7 +69,7 @@ class MOSNet(nn.Module):
         return utterance_predictions, frame_predictions
 
     '''
-    def fuckyou():
+    def forward(self, audio: torch.Tensor, sample_lengths: List[int]):
         for sample_ind in range(audio.shape[0]):
             # for each sample in the batch, split into frames
             sample = audio[sample_ind, :sample_lengths[sample_ind], :]\
