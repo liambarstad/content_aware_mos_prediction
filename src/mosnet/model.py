@@ -64,7 +64,7 @@ class MOSNet(nn.Module):
         frame_predictions = [ sample[:sample_lengths[ind]].squeeze(1) for ind, sample in enumerate(frame_mos) ] 
         # average the frame predictions to get the utterance prediction
         utterance_predictions = torch.stack([ torch.mean(sample) for sample in frame_predictions ])
-        print('FUUUUUUUCK', utterance_predictions)
+        print('utterance preds:', utterance_predictions)
 
         return utterance_predictions, frame_predictions
 
