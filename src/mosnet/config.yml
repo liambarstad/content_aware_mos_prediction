@@ -14,9 +14,8 @@ train:
   validate_every_n_epochs: 5
 
 model:
-  #cnn_channels: [16, 32, 64, 128]
   cnn_channels: [32, 64, 128, 256]
   cnn_kernel_size: 3
-  blstm_hidden_size: 256
+  blstm_hidden_size: 128
   fc_hidden_size: 128
   fc_dropout: 0.3

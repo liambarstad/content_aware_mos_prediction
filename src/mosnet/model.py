@@ -55,8 +55,7 @@ class MOSNet(nn.Module):
         # run through blstm
         blstm_output, _ = self.blstm(blstm_input)
         # pass through fully connected layer w/ relu + dropout
-        fc1_output = F.leaky_relu(self.fc1(blstm_output), negative_slope=0.1)
-        #fc1_output = F.relu(F.dropout(self.fc1(blstm_output), p=self.fc_dropout, training=self.training))
+        fc1_output = F.relu(F.dropout(self.fc1(blstm_output), p=self.fc_dropout, training=self.training))
         # activation layer and constrain to be in range
         frame_mos = torch.sigmoid(self.frame_score(fc1_output))\
             * (self.mos_score_range[1] - self.mos_score_range[0]) + self.mos_score_range[0]
