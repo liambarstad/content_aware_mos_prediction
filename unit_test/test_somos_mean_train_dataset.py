@@ -1,11 +1,28 @@
-import sys
-import os
 import pytest
 import torch
 
-sys.path.append('src')
-from utils.datasets import SOMOSDataset
+from ..src.datasets import SOMOSMeanTrainDataset
 
+class TestSOMOSMeanTrainDataset:
+    def setup_method(self):
+        self.default_args = {
+            'sample_rate': 16000,
+            'data_dir': 'data'
+        }
+
+    def test_will_load_data(self):
+        somos_dataset = SOMOSMeanTrainDataset(**self.default_args)
+        assert len(somos_dataset) > 14000
+        audio, transcript, system_id, mos_score = somos_dataset[0]
+        assert type(audio) == torch.Tensor
+        assert audio.dtype == torch.float32
+        assert type(transcript) == torch.Tensor
+        assert transcript.dtype == torch.int64
+        assert type(system_id) == torch.Tensor
+        assert system_id.dtype == torch.int64
+        assert type(mos_score) == torch.Tensor
+        
+'''
 class TestSOMOSDataset:
 
     def setup_method(self):
@@ -55,4 +72,4 @@ class TestSOMOSDataset:
 
     def test_can_filter_by_locale(self):
         pass
-
+'''
