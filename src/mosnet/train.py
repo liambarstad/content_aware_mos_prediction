@@ -10,7 +10,7 @@ from .loss import mosnet_loss
 from ..datasets import SOMOSMeanTrainDataset
 from ..metrics import Metrics
 from ..utils import pad_audio_batch
-from ..validate import validate
+from ..test import test
 
 def train_mosnet(
     model: torch.nn.Module,
@@ -18,8 +18,7 @@ def train_mosnet(
     train_params: Dict,
     validation_params: Dict,
     device: str = 'cpu',
-    run_dir: str = 'runs',
-    data_dir: str = 'data',
+    runs_dir: str = 'runs',
     seed_value: int = 123,
     frame_weighting_factor: float = 1.0,
     validate_every_n_epochs: int = 1
@@ -31,7 +30,7 @@ def train_mosnet(
     
     somos_train = SOMOSMeanTrainDataset(
         sample_rate=16000,
-        data_dir=data_dir
+        data_dir=train_params['data_dir']
     )
 
     train_loader = DataLoader(
@@ -52,11 +51,11 @@ def train_mosnet(
 
     print(f'{datetime.now()} :: START RUN')
     train_metrics = Metrics('mosnet_train', model_name) 
-    model.train()
 
     for epoch in range(train_params['epochs']):
         # train loop
         for i, (audio, audio_lengths, text, text_lengths, system_ids, mos_scores) in enumerate(train_loader):
+            model.train()
             optimizer.zero_grad()
             
             utterance_scores, frame_scores = model(
@@ -66,7 +65,7 @@ def train_mosnet(
                 text_lengths=text_lengths.to(device)
             ) 
 
-            loss = mosnet_loss(utterance_scores, frame_scores, mos_scores.to(device), frame_weighting_factor)
+            loss = model.loss(utterance_scores, frame_scores, mos_scores.to(device), frame_weighting_factor)
             loss.backward()
             optimizer.step()
 
@@ -76,21 +75,23 @@ def train_mosnet(
         # print epoch metrics
         train_metrics.print(epoch+1)
         # save epoch metrics
-        #train_metrics.save(epoch+1)
+        train_metrics.save(runs_dir, epoch+1)
         train_metrics.clear()
 
         # validation loop every n epochs
         if epoch == 0 or (epoch+1) % validate_every_n_epochs == 0:
 
-            val_loss = validate(
+            val_loss = test(
                 model,
-                train_params['batch_size'],
-                train_params['num_workers'],
-                data_dir=data_dir,
-                listener_count=validation_params['listeners'],
-                system_count=validation_params['systems'],
-                text_count=validation_params['texts']
+                run_name='mosnet_validation',
+                model_name=model_name,
+                batch_size=train_params['batch_size'],
+                num_workers=train_params['num_workers'],
+                runs_dir=runs_dir,
+                device=device,
+                **validation_params
             )
+
             validation_losses.append(val_loss)
             '''
                 # stop early if validation loss does not improve by early_stopping_delta for early_stopping_patience epochs
@@ -104,8 +105,7 @@ def train_mosnet(
 
                     return mosnet
             '''
-
-        #train_metrics.save(epoch+1) 
-        #torch.save(mosnet, os.path.join(os.environ['SAVED_MODEL_DIR'], 'mosnet.pth'))
+    
+    torch.save(model.state_dict(), 'pretrained/mosnet_weights.pth') 
 
     return model

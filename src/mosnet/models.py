@@ -78,8 +78,7 @@ class MOSNet(nn.Module):
             input_size=self.cnn_channels[-1]*4,
             hidden_size=self.blstm_hidden_size,
             batch_first=True,
-            bidirectional=True,
-            #dropout=0.3
+            bidirectional=True
         )
 
         self.fc1 = nn.Linear(
@@ -111,6 +110,34 @@ class MOSNet(nn.Module):
         utterance_predictions = torch.stack([ torch.mean(sample) for sample in frame_predictions ])
 
         return utterance_predictions, frame_predictions
+
+    def loss(
+        self,
+        utterance_scores: torch.Tensor, 
+        frame_scores: List[torch.Tensor], 
+        mos_scores: torch.Tensor, 
+        weighting_factor: int = 1,
+        **kwargs
+        ):
+        '''
+            loss function for mosnet models
+            adds the utterance/target MSE to the MSE per frame for each utterance (weighted by the weighting_factor)
+        '''
+        mos_scores = mos_scores.float()
+        # expand targets to match frame_predictions shape
+        expanded_mos = [
+            mos_score.expand(len(frame)) 
+            for mos_score, frame in zip(mos_scores, frame_scores)
+        ]
+
+        # calculate frame-level loss
+        frame_loss = F.mse_loss(torch.cat(frame_scores), torch.cat(expanded_mos))
+
+        # calculate utterance-level loss
+        utterance_loss = F.mse_loss(utterance_scores, mos_scores)
+
+        # can adjust the weights here depending on how much importance you want to give to each loss
+        return utterance_loss + (weighting_factor * frame_loss)
 
 
 class ProsAlignMOSNet(MOSNet):
