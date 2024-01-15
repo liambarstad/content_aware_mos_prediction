@@ -1,4 +1,6 @@
+import os
 import torch
+import pandas as pd
 from torch.utils.data import DataLoader
 
 from .datasets import SOMOSTestValDataset
@@ -6,58 +8,56 @@ from .utils import pad_audio_batch
 from .metrics import Metrics
 
 def test(
-    model,
-    run_name: str,
-    model_name: str,
-    data_path: str,
-    batch_size: int = 64,
-    num_workers: int = 0,
+    model_path: str,
+    data_path: str = 'data/somos_prepared/test_set.csv',
     transcripts_path: str ='data/SOMOS/all_transcripts.txt',
     audios_path: str ='data/SOMOS/audios',
     device: str = 'cpu',
-    runs_dir: str = 'runs'
+    runs_dir: str = 'runs',
+    num_workers: int = 0,
 ):
-    somos_val = SOMOSTestValDataset(
+    somos_test = SOMOSTestValDataset(
         sample_rate=16000,
         data_path=data_path,
         transcripts_path=transcripts_path,
         audios_path=audios_path
     )
     
-    val_loader = DataLoader(
-        somos_val,
-        batch_size,
+    test_loader = DataLoader(
+        somos_test,
+        batch_size=1,
         shuffle=True,
-        collate_fn=pad_audio_batch,
         num_workers=num_workers
     )
 
-    val_metrics = Metrics(run_name, model_name)
-    val_loss = 0.0
-
+    test_metrics = Metrics('mosnet test')
+    
+    model = torch.load(model_path).to(device)
     model.eval()
+    results_df = pd.DataFrame(columns=['system_id', 'listener_id', 'mos_score', 'predicted_score'])
 
     with torch.no_grad():
-        for i, (audio, audio_lengths, text, text_lengths, system_ids, mos_scores) in enumerate(val_loader):
+        for audio, text, system_ids, listener_ids, mos_scores in test_loader:
 
-            utterance_scores, frame_scores = model(
+            utterance_scores, _ = model(
                 audio=audio.to(device),
-                audio_lengths=audio_lengths.to(device),
-                text=text.to(device),
-                text_lengths=text_lengths.to(device)
+                text=text.to(device)
             )
 
-            val_metrics.update(utterance_scores, system_ids, mos_scores.to(device))
+            new_row = {
+                'system_id': system_ids.item(),
+                'listener_id': listener_ids.item(),
+                'mos_score': mos_scores.item(),
+                'predicted_score': utterance_scores.item()
+            }
+            results_df = pd.concat([results_df, pd.DataFrame([new_row])], ignore_index=True)
+            test_metrics.update(utterance_scores, system_ids, mos_scores.to(device))
 
-            val_loss += model.loss(
-                utterance_scores=utterance_scores, 
-                frame_scores=frame_scores, 
-                mos_scores=mos_scores.to(device)
-            ).item()
+    test_metrics.print()
+    test_metrics.save(os.path.join(runs_dir, 'test.csv'))
 
-    val_metrics.print()
-    val_metrics.save(runs_dir)
-
-    return val_loss
+    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+        print(results_df)
 
 
+            

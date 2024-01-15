@@ -10,18 +10,18 @@ from .loss import mosnet_loss
 from ..datasets import SOMOSMeanTrainDataset
 from ..metrics import Metrics
 from ..utils import pad_audio_batch
-from ..test import test
+from ..validate import validate
 
 def train_mosnet(
     model: torch.nn.Module,
-    model_name: str,
     train_params: Dict,
     validation_params: Dict,
     device: str = 'cpu',
     runs_dir: str = 'runs',
     seed_value: int = 123,
     frame_weighting_factor: float = 1.0,
-    validate_every_n_epochs: int = 1
+    validate_every_n_epochs: int = 1,
+    model_output_path: str = 'pretrained/mosnet.pt'
     ):
 
     torch.manual_seed(seed_value)
@@ -50,7 +50,7 @@ def train_mosnet(
     validation_losses = []
 
     print(f'{datetime.now()} :: START RUN')
-    train_metrics = Metrics('mosnet_train', model_name) 
+    train_metrics = Metrics('mosnet train') 
 
     for epoch in range(train_params['epochs']):
         # train loop
@@ -75,20 +75,17 @@ def train_mosnet(
         # print epoch metrics
         train_metrics.print(epoch+1)
         # save epoch metrics
-        train_metrics.save(runs_dir, epoch+1)
+        train_metrics.save(os.path.join(runs_dir, 'train.csv'), epoch+1)
         train_metrics.clear()
 
         # validation loop every n epochs
         if epoch == 0 or (epoch+1) % validate_every_n_epochs == 0:
 
-            val_loss = test(
+            val_loss = validate(
                 model,
-                run_name='mosnet_validation',
-                model_name=model_name,
-                batch_size=train_params['batch_size'],
-                num_workers=train_params['num_workers'],
                 runs_dir=runs_dir,
                 device=device,
+                num_workers=train_params['num_workers'],
                 **validation_params
             )
 
@@ -105,7 +102,7 @@ def train_mosnet(
 
                     return mosnet
             '''
-    
-    torch.save(model.state_dict(), 'pretrained/mosnet_weights.pth') 
+
+    torch.save(model, model_output_path)
 
     return model

@@ -93,6 +93,9 @@ class SOMOSTestValDataset(Dataset):
 
         self.data = scores.merge(transcripts, on='wav_id')
 
+        # encode listener ids
+        self.data.listenerId = pd.factorize(self.data.listenerId)[0]
+
         self.system_ids = self.data.system_id\
             .value_counts()\
             .reset_index()
@@ -110,4 +113,5 @@ class SOMOSTestValDataset(Dataset):
         return torch.tensor(audio),\
             torch.tensor(text),\
             torch.tensor(system_id),\
+            torch.tensor(sample.listenerId),\
             torch.tensor(sample.choice, dtype=torch.float32)

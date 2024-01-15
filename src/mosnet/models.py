@@ -91,7 +91,7 @@ class MOSNet(nn.Module):
             out_features=1
         )
 
-    def forward(self, audio: torch.Tensor, audio_lengths: List[int], **kwargs):
+    def forward(self, audio: torch.Tensor, audio_lengths: torch.Tensor = None, **kwargs):
         '''
             expects audio to be in shape [bz, ts, sample_points]
             sample_lengths is a list of the original lengths of each sample in the batch, to prevent the network from running on empty frames
@@ -105,8 +105,11 @@ class MOSNet(nn.Module):
         fc1_output = F.relu(F.dropout(self.fc1(blstm_output), p=self.fc_dropout, training=self.training))
         # activation layer and constrain to be in range [1, 5]
         frame_mos = torch.sigmoid(self.frame_score(fc1_output)) * (5 - 1) + 1
-        # remove padding by using sample_lengths
-        frame_predictions = [ sample[:audio_lengths[ind]].squeeze(1) for ind, sample in enumerate(frame_mos) ] 
+        if audio_lengths is not None:
+            # remove padding by using sample_lengths
+            frame_predictions = [ sample[:audio_lengths[ind]].squeeze(1) for ind, sample in enumerate(frame_mos) ] 
+        else:
+            frame_predictions = [ sample.squeeze(1) for sample in frame_mos ]
         utterance_predictions = torch.stack([ torch.mean(sample) for sample in frame_predictions ])
 
         return utterance_predictions, frame_predictions

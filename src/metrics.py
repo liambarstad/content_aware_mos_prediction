@@ -67,12 +67,9 @@ class MSE(Metric):
 
 
 class Metrics:
-    def __init__(self, name: str, runs_dir: str = '/', run_key: str = '', model_name: str = ''):
-        '''
-            calculates all metrics, accepts a "name" to differentiate between models and train/val/test, and a run_key to differentiate between runs
-        '''
+    def __init__(self, name):
+
         self.name = name
-        self.run_key = run_key
         self.utterance_lccs = LCC('utterace_lcc')
         self.utterance_srccs = SRCC('utterance_srcc')
         self.utterance_mses = MSE('utterance_mse')
@@ -146,16 +143,15 @@ class Metrics:
         valid_metric_values = [v for v in metric_values if v is not None]
         return sum(metric_values) / len(valid_metric_values)
         
-    def save(self, runs_dir, epoch_num: int = None):
+    def save(self, filepath, epoch_num: int = None):
         '''
             appends metrics to a file, named by the title and run_key, in the runs directory specified in the environment variable
             clears all metrics after saving
         '''
-        run_fpath = os.path.join(runs_dir, self.name)+f'_{self.run_key}.csv'
-        f_exists = os.path.isfile(run_fpath)
-        os.makedirs(os.path.dirname(run_fpath), exist_ok=True)
+        f_exists = os.path.isfile(filepath)
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
-        with open(run_fpath, 'a', newline='') as metrics_file:
+        with open(filepath, 'a', newline='') as metrics_file:
             csvwriter = csv.writer(metrics_file)
             if not f_exists:
                 csvwriter.writerow([
